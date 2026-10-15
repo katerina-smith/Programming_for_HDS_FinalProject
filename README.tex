@@ -1,82 +1,104 @@
-# Automated Analysis Pipeline Exploration - Cervical Cancer Risk Factors
+# Automated Analysis Pipeline: Predicting a Positive Cervical Biopsy
 
-## Purpose of the Notebook
+**Author:** Katerina Smith
+**Course:** Programming for Health Data Science, Final Project
 
-This notebook runs and extends the instructor's automated analysis pipeline on my final
-project dataset, the UCI Cervical Cancer (Risk Factors) dataset. The pipeline loads the
-data, checks and prepares it, explores it, runs inferential statistics, and trains and
-evaluates supervised machine learning models. It uses conditional logic to adapt to the
-file type, missing values, and user-defined settings.
+## Purpose
 
-The prediction task is to classify whether a patient's cervical biopsy is positive
-(`Biopsy` = 1) from age, sexual and reproductive history, contraceptive use, smoking, and
-STD history. It supports risk-stratification ideas only and does not replace diagnostic
-testing.
+This Google Colab notebook is a reproducible, end-to-end analysis pipeline for a health data science question: **can a patient's risk-factor history predict whether her cervical biopsy is positive?**
 
-The notebook also explains the pipeline stages and conditional logic, documents the
-modifications that were made, and interprets the results of the modified pipeline.
+It uses the UCI Cervical Cancer (Risk Factors) dataset. The notebook loads and validates the data, cleans it, describes and plots it, runs statistical tests, trains and compares four classification models, and picks the best model using a primary metric chosen in advance (recall). It uses conditional logic to adapt to the data, for example, to the file type, missing values, class balance, and the settings the user chooses.
 
-### Modifications
+The models support risk-stratification ideas only. They do not replace diagnostic testing.
 
-1. **Data loading:** loads from a local file, then GitHub, then (Colab only) an upload prompt, and converts `?` to missing. The notebook runs with no manual upload, and the raw file marks missing answers with `?`.
-2. **Automatic cleaning:** fixes impossible values, drops columns that are too empty or constant, and drops duplicate rows. 
-3. **Class weights and cutoff:** balanced class weights, and a probability cutoff chosen to reach a target recall.
-4. **Random forest and PR AUC:** adds a random forest model and a PR AUC metric. 
+## Open the Notebook
 
-Also, the plot variables were changed to fit this dataset and the unseeded random sample was fixed so the output is the same on every run.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/katerina-smith/Programming_for_HDS_FinalProject/blob/main/Week5_FinalProject.ipynb)
+
+## How to Run the Analysis
+
+**Option A: Google Colab (recommended)**
+1. Click the "Open in Colab" badge above.
+2. Choose **Runtime > Restart session and run all**.
+3. No upload is needed. The first code cell loads the data in this order:
+   1. `risk_factors_cervical_cancer.csv` from the current Colab folder, if it is there.
+   2. The same file from this GitHub repository (set by `DATA_URL` in the first code cell).
+   3. If both fail and the notebook is running in Colab, a prompt to upload the file from your computer.
+
+**Option B: Local Jupyter or VS Code**
+1. Clone this repository and move into its folder.
+2. Install the libraries: `pip install -r requirements.txt`
+3. Open `Week5_FinalProject.ipynb` and run all cells.
+
+The notebook uses fixed random seeds (`random_state=42`), so the results are the same on every run. The last code cell prints the Python and library versions used.
+
+## Using Your Own Dataset
+
+The notebook can analyze another dataset that fits the project's scope. Your data should have:
+- A binary outcome column coded 0/1 (or two text labels that you map in the "Encode outcome labels" cell).
+- At least 300 rows and at least 10 numeric predictor columns.
+- A file type of CSV, TSV, TXT, Excel (.xlsx or .xls), JSON, or Parquet.
+
+Steps:
+1. **Add your file.** In Colab, open the Files panel (folder icon on the left) and upload your file. Then set `DATA_FILE` in the first code cell to your file's name. The notebook checks for a local file first, so it will use yours. If your file uses a different missing-value code than `?`, change `MISSING_CODES` in the same cell.
+2. **Set the outcome.** In the "Configure and split data" cell, set `target_variable` to your outcome column and `columns_to_exclude` to any columns that would leak the answer (the other screening tests, in this project).
+3. **Choose your variables.** Cells marked `# CHANGE VARIABLE HERE` (plots and statistical tests) use this dataset's column names. Replace them with columns from your data.
+4. **Choose your primary metric.** Set `PRIMARY_METRIC` in the model selection cell ("Recall", "Precision", "F1", "ROC AUC", or "PR AUC").
+
+The data validation step will stop the notebook with a clear message if the outcome is missing, is not binary, or if there are too few rows, too few predictors, or non-numeric predictors.
+
+## Workflow
+
+1. **Data loading and validation:** reads the file with a reader chosen from its extension, converts `?` to missing values, and checks that the data is ready (Enhancement 1).
+2. **Cleaning:** replaces impossible values (age at first intercourse greater than current age), drops columns that are mostly empty or constant, and removes duplicate rows (858 rows and 36 columns become 835 rows and 32 columns).
+3. **Exploration:** descriptive statistics, correlation heatmaps, histograms, box plots, scatter plots, and other plots.
+4. **Statistical tests:** one-sample t-test, Welch's t-test, one-way ANOVA, chi-square test, and a Mann-Whitney U test chosen automatically when assumptions fail (Enhancement 5).
+5. **Models:** logistic regression, decision tree (tuned with grid search), random forest, and support vector machine, all with balanced class weights for the rare positive class.
+6. **Evaluation:** accuracy, recall, precision, F1, ROC AUC, PR AUC, confusion matrices, a cutoff chosen to reach a target recall, and 5-fold cross-validation (Enhancement 3).
+7. **Model selection:** the best model is picked using the primary metric (recall), with F1 as the tie-breaker (Enhancement 4).
+
+Recall, precision, and F1 are written out with LaTeX formulas in the notebook, with an explanation of how they relate to the analysis. The Mann-Whitney U formula is also shown.
+
+## Pipeline Enhancements
+
+1. **Data validation report:** `validate_data()` checks the outcome, class balance, size, missing values, duplicates, and numeric predictors, then prints a pass or fail message.
+2. **Modular model functions:** `build_model_pipeline()` and `evaluate_model()` build and score every model the same way, so adding a model takes one line.
+3. **Cross-validated model comparison:** 5-fold stratified cross-validation on the training data gives steadier estimates, because the test set has only 16 positive patients.
+4. **Automatic best-model selection and reproducibility record:** the model is picked by a metric set in advance, and the notebook prints library versions and the random seed.
+5. **Assumption checks and automatic test choice:** `compare_groups()` checks normality and equal variances, then runs Welch's t-test or the Mann-Whitney U test, whichever fits the data.
+
+## Key Results
+
+- Only about 6 percent of patients have a positive biopsy, so accuracy is misleading: a model that always predicts "negative" is 93.6% accurate and finds no cases.
+- By cross-validated recall, **logistic regression** was the best model (0.446). On the held-out test set it found 8 of the 16 positive patients (recall 0.50).
+- Cross-validation changed the picture: the random forest had the best test F1 among the untuned models but the lowest cross-validated recall.
+- Years of hormonal contraceptive use is very skewed, so the notebook used the Mann-Whitney U test. It found no difference between biopsy groups (p = 0.567), which means the earlier ANOVA result (p = 0.030) is not robust.
+- All models are only modestly useful, and the models are not ready for clinical use.
 
 ## Repository Contents
 
-| File | Description |
-|---|---|
-| `Week3_AutomatedAnalysisPipelineNotebook.ipynb` | The completed Google Colab notebook (already run, with outputs) |
-| `risk_factors_cervical_cancer.csv` | The project dataset (original UCI format is CSV) |
-| `README.md` | This file |
-
-## Instructions for Running the Analysis
-
-Open the notebook with the link below, then choose **Runtime > Restart session and run all**.
-
-**Colab link:** https://colab.research.google.com/drive/1-Xt2PyUdwyESYsLgimoGmcETXUY7fjW- 
-
-No upload is needed. The first code cell loads the data in this order:
-1. `risk_factors_cervical_cancer.csv` from the current folder, if present.
-2. The same file from this GitHub repository (set by `DATA_URL` in the first code cell, which points to `katerina-smith/Programming_for_HDS_Week3b`).
-3. If both fail and the notebook is running in Colab, a prompt to upload the file.
-
-The notebook uses fixed random seeds (`random_state=42`), so results are the same on every run.
+- `Week5_FinalProject.ipynb`: the completed Google Colab notebook (already run, with outputs).
+- `risk_factors_cervical_cancer.csv`: the project dataset (the original UCI file is a CSV).
+- `README.md`: this file.
 
 ## Required Software and Libraries
 
-Python 3 with: pandas, numpy, scipy, scikit-learn, matplotlib, seaborn, statsmodels, and phik
-(see `requirements.txt`). All except `phik` are pre-installed in Google Colab; the notebook
-installs `phik` automatically in the Phi-K correlation cell.
+Python 3 with pandas, numpy, scipy, scikit-learn, matplotlib, seaborn, statsmodels, and phik. All except `phik` are pre-installed in Google Colab. The notebook installs `phik` automatically in the Phi-K correlation cell.
 
 ## Dataset
 
-**Cervical Cancer (Risk Factors)**, UCI Machine Learning Repository:
-<https://archive.ics.uci.edu/dataset/383/cervical+cancer+risk+factors>
-(Hospital Universitario de Caracas, Venezuela, 2017; license CC BY 4.0).
-858 patients and 36 columns in the original file. After the automatic cleaning in the
-notebook: 835 patients and 32 columns (28 predictors after setting aside the target and
-three other screening-test columns).
+**Cervical Cancer (Risk Factors)**, UCI Machine Learning Repository: <https://archive.ics.uci.edu/dataset/383/cervical+cancer+risk+factors> (Hospital Universitario de Caracas, Venezuela, 2017; license CC BY 4.0). The original file has 858 patients and 36 columns. After the notebook's automatic cleaning there are 835 patients and 32 columns (28 predictors after setting aside the outcome and three other screening-test columns).
 
 ## Assumptions and Limitations
 
-- **Target and leakage:** the target is `Biopsy`. The columns `Hinselmann`, `Schiller`, and
-  `Citology` are other screening-test results that closely track the biopsy result, so they
-  are excluded from the predictors.
-- **Few positive cases:** about 6 percent of patients are biopsy positive. The test set has only 16
-  positive patients, so performance numbers are uncertain and would change with a different
-  split. The notebook uses a single train/test split.
-- **Missing data:** missing answers are imputed with training-set medians. They are not
-  random (patients could skip questions), so imputation cannot recover skipped answers.
-- **Statistical tests:** several tests were run without multiple-comparison adjustment, so
-  p-values are descriptive.
-- **Weak predictive signal:** models perform only modestly. A cutoff chosen to catch 80 percent of
-  positive biopsies flags most patients, so these models are not ready for clinical use.
-- **Single hospital, self-reported, observational data:** results may not generalize, and
-  relationships are associations, not causes.
+- **Outcome and leakage:** the outcome is `Biopsy`. The columns `Hinselmann`, `Schiller`, and `Citology` are other screening-test results that closely track the biopsy result, so they are excluded from the predictors.
+- **Few positive cases:** about 6 percent of patients are biopsy positive, and the test set has only 16 positive patients. Performance numbers are uncertain and would change with a different split. The notebook uses one train/test split, plus cross-validation on the training data.
+- **Missing data:** missing answers are filled in with training-set medians. They are not random (patients could skip questions), so imputation cannot recover skipped answers.
+- **Statistical tests:** several tests were run without a multiple-comparison adjustment, so the p-values are descriptive.
+- **Weak predictive signal:** a cutoff chosen to catch 80 percent of positive biopsies flags most patients, so these models are not ready for clinical use.
+- **Dataset-specific cells:** some plot and test cells, and the impossible-value rule, use this dataset's column names. They need to be updated for another dataset (see "Using Your Own Dataset").
+- **Single hospital, self-reported, observational data:** results may not generalize, and relationships are associations, not causes.
+
   
   ## AI Use
   
