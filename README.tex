@@ -20,48 +20,52 @@ The models support risk-stratification ideas only. They do not replace diagnosti
 **Option A: Google Colab (recommended)**
 1. Click the "Open in Colab" badge above.
 2. Choose **Runtime > Restart session and run all**.
-3. No upload is needed. The first code cell loads the data in this order:
+3. No upload is needed by default. The Settings cell has `DATA_SOURCE = "included"`, and the data loads in this order:
    1. `risk_factors_cervical_cancer.csv` from the current Colab folder, if it is there.
-   2. The same file from this GitHub repository (set by `DATA_URL` in the first code cell).
+   2. The same file from this GitHub repository (set by `DATA_URL` in the Settings cell).
    3. If both fail and the notebook is running in Colab, a prompt to upload the file from your computer.
+4. To analyze a different dataset, see "Using Your Own Dataset" below.
 
 **Option B: Local Jupyter or VS Code**
 1. Clone this repository and move into its folder.
-2. Install the libraries: `pip install -r requirements.txt`
-3. Open `Week5_FinalProject.ipynb` and run all cells.
+2. Open `Week5_FinalProject.ipynb` and run all cells.
 
 The notebook uses fixed random seeds (`random_state=42`), so the results are the same on every run. The last code cell prints the Python and library versions used.
 
-## Using Your Own Dataset
+## Using Own Dataset
 
 The notebook can analyze another dataset that fits the project's scope. Your data should have:
-- A binary outcome column coded 0/1 (or two text labels that you map in the "Encode outcome labels" cell).
+- A binary outcome column coded 0/1 (or two text labels that you map in the Settings cell).
 - At least 300 rows and at least 10 numeric predictor columns.
 - A file type of CSV, TSV, TXT, Excel (.xlsx or .xls), JSON, or Parquet.
 
 Steps:
-1. **Add your file.** In Colab, open the Files panel (folder icon on the left) and upload your file. Then set `DATA_FILE` in the first code cell to your file's name. The notebook checks for a local file first, so it will use yours. If your file uses a different missing-value code than `?`, change `MISSING_CODES` in the same cell.
-2. **Set the outcome.** In the "Configure and split data" cell, set `target_variable` to your outcome column and `columns_to_exclude` to any columns that would leak the answer (the other screening tests, in this project).
-3. **Choose your variables.** Cells marked `# CHANGE VARIABLE HERE` (plots and statistical tests) use this dataset's column names. Replace them with columns from your data.
-4. **Choose your primary metric.** Set `PRIMARY_METRIC` in the model selection cell ("Recall", "Precision", "F1", "ROC AUC", or "PR AUC").
+1. **Upload the file.** In the Settings cell (in the Data Input section), set `DATA_SOURCE = "upload"`. When the next cell runs in Google Colab, an upload prompt appears, and the notebook confirms the file name, rows, and columns once it is loaded.
+2. **Set the outcome.** In the same Settings cell, set `TARGET_VARIABLE` to your outcome column and `COLUMNS_TO_EXCLUDE` to any columns that would leak the answer. If the outcome is stored as text, set `OUTCOME_LABELS`. Set `MISSING_CODES` if your file uses a missing-value code other than `?`.
+3. **Choose the primary metric.** Set `PRIMARY_METRIC` to "Recall", "Precision", "F1", "ROC AUC", or "PR AUC".
+4. **Run all cells.** The notebook profiles and validates the data and stops with a clear message if the outcome is missing or not binary, or if there are too few rows, too few predictors, or non-numeric predictors.
 
-The data validation step will stop the notebook with a clear message if the outcome is missing, is not binary, or if there are too few rows, too few predictors, or non-numeric predictors.
+The variables used in the example plots and statistical tests are also set in the Settings cell. If a named column is not found in the data, the notebook automatically uses a numeric column instead and prints which one. To choose specific variables, edit those settings.
+
+The settings were tested with a second dataset (the breast cancer dataset included with scikit-learn), and the notebook ran from start to finish.
 
 ## Workflow
 
-1. **Data loading and validation:** reads the file with a reader chosen from its extension, converts `?` to missing values, and checks that the data is ready (Enhancement 1).
-2. **Cleaning:** replaces impossible values (age at first intercourse greater than current age), drops columns that are mostly empty or constant, and removes duplicate rows (858 rows and 36 columns become 835 rows and 32 columns).
-3. **Exploration:** descriptive statistics, correlation heatmaps, histograms, box plots, scatter plots, and other plots.
-4. **Statistical tests:** one-sample t-test, Welch's t-test, one-way ANOVA, chi-square test, and a Mann-Whitney U test chosen automatically when assumptions fail (Enhancement 5).
-5. **Models:** logistic regression, decision tree (tuned with grid search), random forest, and support vector machine, all with balanced class weights for the rare positive class.
-6. **Evaluation:** accuracy, recall, precision, F1, ROC AUC, PR AUC, confusion matrices, a cutoff chosen to reach a target recall, and 5-fold cross-validation (Enhancement 3).
-7. **Model selection:** the best model is picked using the primary metric (recall), with F1 as the tie-breaker (Enhancement 4).
+1. **Settings and data input:** one Settings cell controls the data source (included file or upload from your computer), the outcome, the excluded columns, and the primary metric. The notebook reads the file with a reader chosen from its extension, converts `?` to missing values, and confirms the upload.
+2. **Profiling:** a table of every column's type, missing values, and unique values, plus the outcome's class balance.
+3. **Cleaning:** replaces impossible values (age at first intercourse greater than current age), drops columns that are mostly empty or constant, and removes duplicate rows (858 rows and 36 columns become 835 rows and 32 columns).
+4. **Validation:** checks that the data is ready and prints a pass or fail message before any analysis (Enhancement 1).
+5. **Exploration:** descriptive statistics, correlation heatmaps, histograms, box plots, scatter plots, and other plots.
+6. **Statistical tests:** one-sample t-test, Welch's t-test, one-way ANOVA, chi-square test, and a Mann-Whitney U test chosen automatically when assumptions fail (Enhancement 5).
+7. **Models:** logistic regression, decision tree (tuned with grid search), random forest, and support vector machine, all with balanced class weights for the rare positive class.
+8. **Evaluation:** accuracy, recall, precision, F1, ROC AUC, PR AUC, confusion matrices, a cutoff chosen to reach a target recall, and 5-fold cross-validation (Enhancement 3).
+9. **Model selection:** the best model is picked using the primary metric (recall), with F1 as the tie-breaker, and the notebook prints a written justification for the choice (Enhancement 4).
 
 Recall, precision, and F1 are written out with LaTeX formulas in the notebook, with an explanation of how they relate to the analysis. The Mann-Whitney U formula is also shown.
 
 ## Pipeline Enhancements
 
-1. **Data validation report:** `validate_data()` checks the outcome, class balance, size, missing values, duplicates, and numeric predictors, then prints a pass or fail message.
+1. **Data validation report:** `validate_data()` runs right after cleaning. It checks the outcome, class balance, size, missing values, duplicates, and numeric predictors, then prints a pass or fail message.
 2. **Modular model functions:** `build_model_pipeline()` and `evaluate_model()` build and score every model the same way, so adding a model takes one line.
 3. **Cross-validated model comparison:** 5-fold stratified cross-validation on the training data gives steadier estimates, because the test set has only 16 positive patients.
 4. **Automatic best-model selection and reproducibility record:** the model is picked by a metric set in advance, and the notebook prints library versions and the random seed.
@@ -69,7 +73,7 @@ Recall, precision, and F1 are written out with LaTeX formulas in the notebook, w
 
 ## Key Results
 
-- Only about 6 percent of patients have a positive biopsy, so accuracy is misleading: a model that always predicts "negative" is 93.6% accurate and finds no cases.
+- Only about 6 percent of patients have a positive biopsy, so accuracy is misleading: a model that always predicts "negative" is 93.6 percent accurate and finds no cases.
 - By cross-validated recall, **logistic regression** was the best model (0.446). On the held-out test set it found 8 of the 16 positive patients (recall 0.50).
 - Cross-validation changed the picture: the random forest had the best test F1 among the untuned models but the lowest cross-validated recall.
 - Years of hormonal contraceptive use is very skewed, so the notebook used the Mann-Whitney U test. It found no difference between biopsy groups (p = 0.567), which means the earlier ANOVA result (p = 0.030) is not robust.
@@ -96,12 +100,12 @@ Python 3 with pandas, numpy, scipy, scikit-learn, matplotlib, seaborn, statsmode
 - **Missing data:** missing answers are filled in with training-set medians. They are not random (patients could skip questions), so imputation cannot recover skipped answers.
 - **Statistical tests:** several tests were run without a multiple-comparison adjustment, so the p-values are descriptive.
 - **Weak predictive signal:** a cutoff chosen to catch 80 percent of positive biopsies flags most patients, so these models are not ready for clinical use.
-- **Dataset-specific cells:** some plot and test cells, and the impossible-value rule, use this dataset's column names. They need to be updated for another dataset (see "Using Your Own Dataset").
+- **Dataset-specific text:** the plot and test variables, the impossible-value rule, and the outcome labels are settings and adapt to other datasets. The written interpretation sections of the notebook describe this project's results and need to be rewritten for new data.
 - **Single hospital, self-reported, observational data:** results may not generalize, and relationships are associations, not causes.
 
-  
-  ## AI Use
+ ## AI Use
   
  Anthropic. Claude. Used to improve documentation, give examples of optimal 
 analysis pipeline, troubleshoot/optimize code, and assist with model interpretation. 
 Also used to generate examples of README documentation in GitHub.
+
